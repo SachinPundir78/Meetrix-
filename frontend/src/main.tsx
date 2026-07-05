@@ -1,12 +1,16 @@
 import { createRoot } from "react-dom/client";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App.tsx";
 import "./index.css";
 
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ?? "";
+
+if (!clerkPublishableKey) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY environment variable");
+}
 
 createRoot(document.getElementById("root")!).render(
-  <GoogleOAuthProvider clientId={googleClientId}>
+  <ClerkProvider publishableKey={clerkPublishableKey}>
     <App />
-  </GoogleOAuthProvider>
+  </ClerkProvider>
 );

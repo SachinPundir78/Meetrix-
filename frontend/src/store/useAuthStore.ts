@@ -34,6 +34,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   login: (token: string, user: AuthUser) => void;
   logout: () => void;
+  setToken: (token: string) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -60,7 +61,37 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem(AUTH_STORAGE_KEY);
     set({ token: null, user: null, isAuthenticated: false });
   },
+
+  setToken: (token) => {
+    const user = useAuthStore.getState().user;
+    localStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({ token, user })
+    );
+    set({ token });
+  },
 }));
+
+let clerkGetToken: (() => Promise<string | null>) | null = null;
+
+export function setClerkGetToken(fn: (() => Promise<string | null>) | null) {
+  clerkGetToken = fn;
+}
+
+export async function getAuthToken(): Promise<string | null> {
+  if (clerkGetToken) {
+    try {
+      const token = await clerkGetToken();
+      if (token) {
+        useAuthStore.getState().setToken(token);
+        return token;
+      }
+    } catch (err) {
+      console.error("Failed to get fresh Clerk token:", err);
+    }
+  }
+  return getStoredAuthToken();
+}
 
 /** Token for non-React fetch helpers (e.g. `api.ts`); falls back to localStorage */
 export function getStoredAuthToken(): string | null {
@@ -77,3 +108,4 @@ export function getStoredAuthToken(): string | null {
   }
   return null;
 }
+

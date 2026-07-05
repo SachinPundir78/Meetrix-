@@ -1,16 +1,39 @@
-import jwt from 'jsonwebtoken';
+import { getAuth, clerkClient } from '@clerk/express';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 
-export const requireAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: "Unauthorized. Please log in." });
-  }
-  const token = authHeader.split(' ')[1];
+export const requireAuth = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: decoded.userId }; 
+    const { userId } = getAuth(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized. Please log in." });
+    }
+
+    // Check if user exists in database
+    let userResult = await db.select().from(users).where(eq(users.clerkId, userId));
+    let user = userResult[0];
+
+    if (!user) {
+      // Lazy creation: fetch user info from Clerk and insert into database
+      const clerkUser = await clerkClient.users.getUser(userId);
+      const email = clerkUser.emailAddresses[0]?.emailAddress || '';
+      const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User';
+      const picture = clerkUser.imageUrl;
+
+      const newUser = await db.insert(users).values({
+        clerkId: userId,
+        email,
+        name,
+        picture,
+      }).returning();
+      user = newUser[0];
+    }
+
+    req.user = { id: user.id, clerkId: userId, name: user.name, email: user.email };
     next();
   } catch (error) {
-    return res.status(401).json({ error: "Invalid or expired token." });
+    console.error("Authentication middleware error:", error);
+    return res.status(500).json({ error: "Internal server error." });
   }
 };

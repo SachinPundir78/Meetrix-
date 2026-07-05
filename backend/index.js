@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import { clerkMiddleware } from '@clerk/express';
 import routes from './routes/index.js';
 
 const app = express();
@@ -8,6 +9,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors()); 
 app.use(express.json());
+app.use(clerkMiddleware());
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ ok: true });
 });

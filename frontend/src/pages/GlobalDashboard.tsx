@@ -126,10 +126,10 @@ const GlobalDashboard = () => {
           </Button>
           <div>
             <h1 className="text-xl font-display font-bold tracking-tight text-foreground">
-              My Meetings
+              Meetings I Created
             </h1>
             <p className="text-sm text-muted-foreground">
-              {meetings.length} meeting{meetings.length !== 1 ? "s" : ""} total
+              Meetings you have created as host ({meetings.length} total)
             </p>
           </div>
         </div>
@@ -237,7 +237,7 @@ const GlobalDashboard = () => {
                           return allPast ? (
                             <Badge
                               variant="destructive"
-                              className="shrink-0 text-[10px] uppercase tracking-wider"
+                              className="shrink-0 text-[10px] tracking-wider"
                             >
                               Expired
                             </Badge>
@@ -246,9 +246,13 @@ const GlobalDashboard = () => {
                               variant={
                                 meeting.status === "CONFIRMED"
                                   ? "default"
-                                  : "secondary"
+                                  : "destructive"
                               }
-                              className="shrink-0 text-[10px] uppercase tracking-wider"
+                              className={`shrink-0 text-[10px] tracking-wider ${
+                                meeting.status === "CONFIRMED"
+                                  ? "bg-emerald-600 hover:bg-emerald-600 text-white"
+                                  : "bg-red-600 hover:bg-red-600 text-white border-transparent"
+                              }`}
                             >
                               {meeting.status === "CONFIRMED"
                                 ? "Confirmed"

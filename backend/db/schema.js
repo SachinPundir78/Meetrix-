@@ -3,11 +3,10 @@ import { pgTable, text, timestamp, integer, uuid, jsonb } from "drizzle-orm/pg-c
 // 1. Users Table
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  googleId: text("google_id").notNull().unique(),
+  clerkId: text("google_id").notNull().unique(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   picture: text("picture"),
-  googleRefreshToken: text("google_refresh_token"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -23,6 +22,7 @@ export const meetings = pgTable("meetings", {
   status: text("status").default("PENDING").notNull(), 
   finalStartTime: timestamp("final_start_time", { withTimezone: true }),
   finalEndTime: timestamp("final_end_time", { withTimezone: true }),
+  meetLink: text("meet_link"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

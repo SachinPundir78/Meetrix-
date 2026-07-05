@@ -6,9 +6,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import BottomNavbar from "@/components/BottomNavbar";
+import { AuthenticateWithRedirectCallback } from "@clerk/clerk-react";
+import ClerkStateSync from "@/components/ClerkStateSync";
 import Index from "./pages/Index";
 import MeetingDashboard from "./pages/MeetingDashboard";
 import GlobalDashboard from "./pages/GlobalDashboard";
+import MyMeetings from "./pages/MyMeetings";
 import CreateMeeting from "./pages/CreateMeeting";
 import NotFound from "./pages/NotFound";
 import GuestVote from "./pages/GuestVote";
@@ -21,18 +24,21 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
+        <ClerkStateSync />
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <div className="pb-16 md:pb-0">
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/m/:guestSlug" element={<GuestVote />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/meeting/:meetingId" element={<MeetingDashboard />} />
                 <Route path="/dashboard" element={<GlobalDashboard />} />
+                <Route path="/my-meetings" element={<MyMeetings />} />
                 <Route path="/create" element={<CreateMeeting />} />
               </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

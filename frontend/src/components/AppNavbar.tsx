@@ -1,12 +1,15 @@
-import { CalendarDays, Menu, X, Moon, Sun } from "lucide-react";
+import { Menu, X, Moon, Sun, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuthStore } from "@/store/useAuthStore";
+import { SignInButton, SignUpButton, UserButton } from "@clerk/clerk-react";
 
 const navLinkClass =
-  "text-sm font-medium text-muted-foreground hover:text-foreground transition-colors";
+  "relative text-sm font-semibold text-muted-foreground transition-colors hover:text-black dark:hover:text-foreground after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:rounded-full after:bg-gradient-to-r after:from-[#6dd3e8] after:via-[#7fd69a] after:to-[#d8df6f] after:transition-transform after:duration-200 hover:after:scale-x-100 dark:after:from-[#B6EDFD] dark:after:via-[#b8f5c8] dark:after:to-[#f5f0a0]";
+const activeNavLinkClass =
+  "text-black dark:text-foreground after:scale-x-100 after:h-[3px]";
 
 export function AppNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -14,32 +17,39 @@ export function AppNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const logout = useAuthStore((s) => s.logout);
+  const redirectUrl = location.pathname.startsWith("/m/")
+    ? location.pathname
+    : "/dashboard";
 
   const featuresHref = location.pathname === "/" ? "#features" : "/#features";
   const howHref = location.pathname === "/" ? "#how-it-works" : "/#how-it-works";
-  const loginHref = location.pathname === "/" ? "#login" : "/#login";
+
+  const getNavLinkClass = (path: string) => {
+    const isActive = location.pathname === path;
+    return `${navLinkClass} ${isActive ? activeNavLinkClass : ""}`.trim();
+  };
 
   const handleCreateMeeting = () => {
     setMobileOpen(false);
     if (isAuthenticated) {
       navigate("/create");
-      return;
-    }
-    if (location.pathname === "/") {
-      document.getElementById("login")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    } else {
-      navigate("/");
-      setTimeout(() => {
-        document.getElementById("login")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 200);
     }
   };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto flex items-center justify-between py-4 px-6">
-        <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
+        <Link
+          to="/"
+          className="flex items-center gap-2"
+          onClick={(event) => {
+            setMobileOpen(false);
+            if (location.pathname === "/") {
+              event.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+        >
           <img
             src={theme === "dark" ? "/logo_darktheme.svg" : "/logo_lighttheme.svg"}
             alt="Meetrix Groups logo"
@@ -48,44 +58,76 @@ export function AppNavbar() {
           <span className="text-xl font-display font-bold text-foreground">Meetrix Groups</span>
         </Link>
 
+        {/* Desktop Layout */}
         <div className="hidden md:flex items-center gap-8">
-          <a href={featuresHref} className={navLinkClass}>
+          <a
+            href={featuresHref}
+            className={location.pathname === "/" ? `${navLinkClass} ${activeNavLinkClass}` : navLinkClass}
+          >
             Features
           </a>
-          <a href={howHref} className={navLinkClass}>
+          <a
+            href={howHref}
+            className={location.pathname === "/" ? `${navLinkClass} ${activeNavLinkClass}` : navLinkClass}
+          >
             How It Works
           </a>
+
           {isAuthenticated ? (
             <>
-              <Link to="/dashboard" className={navLinkClass}>
+              <Link to="/dashboard" className={getNavLinkClass("/dashboard")}>
                 Dashboard
               </Link>
-              <button
-                type="button"
-                onClick={() => logout()}
-                className={navLinkClass}
-              >
-                Sign Out
+              <Link to="/my-meetings" className={getNavLinkClass("/my-meetings")}>
+                My Meetings
+              </Link>
+              <button type="button" onClick={toggle} className="p-2 rounded-full hover:bg-secondary transition-colors" aria-label="Toggle theme">
+                {theme === "light" ? <Moon className="h-5 w-5 text-foreground" /> : <Sun className="h-5 w-5 text-foreground" />}
               </button>
+              <Button
+                type="button"
+                className="btn-gradient-primary !rounded-full px-6 font-bold flex items-center gap-1.5"
+                onClick={handleCreateMeeting}
+              >
+                Create Meeting
+                <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+              </Button>
+              <UserButton afterSignOutUrl="/" />
             </>
           ) : (
-            <a href={loginHref} className={navLinkClass}>
-              Log In
-            </a>
+            <>
+              <button type="button" onClick={toggle} className="p-2 rounded-full hover:bg-secondary transition-colors" aria-label="Toggle theme">
+                {theme === "light" ? <Moon className="h-5 w-5 text-foreground" /> : <Sun className="h-5 w-5 text-foreground" />}
+              </button>
+              <div className="flex items-center gap-4">
+                <SignInButton mode="modal" forceRedirectUrl={redirectUrl}>
+                  <Button type="button" className="px-6 font-bold">
+                    Login
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal" forceRedirectUrl={redirectUrl}>
+                  <Button type="button" variant="secondary" className="px-6 font-bold">
+                    Sign up
+                  </Button>
+                </SignUpButton>
+              </div>
+            </>
           )}
+        </div>
+
+        {/* Mobile Header Icons / Buttons */}
+        <div className="flex items-center gap-2 md:hidden">
           <button type="button" onClick={toggle} className="p-2 rounded-full hover:bg-secondary transition-colors" aria-label="Toggle theme">
             {theme === "light" ? <Moon className="h-5 w-5 text-foreground" /> : <Sun className="h-5 w-5 text-foreground" />}
           </button>
-          <Button type="button" className="px-6" onClick={handleCreateMeeting}>
-            Create Meeting
-          </Button>
+          {isAuthenticated && <UserButton afterSignOutUrl="/" />}
+          <button type="button" aria-label="Open menu" onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
-
-        <button type="button" className="md:hidden" aria-label="Open menu" onClick={() => setMobileOpen(!mobileOpen)}>
-          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
       </div>
 
+      {/* Mobile Drawer Menu */}
       {mobileOpen && (
         <div className="md:hidden bg-background border-b border-border px-6 pb-4 flex flex-col gap-3">
           <a href={featuresHref} className="text-sm font-medium text-muted-foreground" onClick={() => setMobileOpen(false)}>
@@ -96,25 +138,43 @@ export function AppNavbar() {
           </a>
           {isAuthenticated ? (
             <>
-              <Link to="/dashboard" className="text-sm font-medium text-muted-foreground" onClick={() => setMobileOpen(false)}>
+              <Link
+                to="/dashboard"
+                className={`text-sm font-medium ${location.pathname === "/dashboard" ? "text-foreground" : "text-muted-foreground"}`}
+                onClick={() => setMobileOpen(false)}
+              >
                 Dashboard
               </Link>
-              <button type="button" onClick={() => { logout(); setMobileOpen(false); }} className="text-sm font-medium text-muted-foreground text-left">
-                Sign Out
-              </button>
+              <Link
+                to="/my-meetings"
+                className={`text-sm font-medium ${location.pathname === "/my-meetings" ? "text-foreground" : "text-muted-foreground"}`}
+                onClick={() => setMobileOpen(false)}
+              >
+                My Meetings
+              </Link>
+              <Button
+                type="button"
+                className="btn-gradient-primary !rounded-full px-6 w-full font-bold flex items-center justify-center gap-1.5"
+                onClick={handleCreateMeeting}
+              >
+                Create a Free Meeting
+                <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+              </Button>
             </>
           ) : (
-            <a href={loginHref} className="text-sm font-medium text-muted-foreground" onClick={() => setMobileOpen(false)}>
-              Log In
-            </a>
+            <div className="flex flex-col gap-2 pt-2">
+              <SignInButton mode="modal" forceRedirectUrl={redirectUrl}>
+                <Button type="button" className="w-full font-bold">
+                  Login
+                </Button>
+              </SignInButton>
+              <SignUpButton mode="modal" forceRedirectUrl={redirectUrl}>
+                <Button type="button" variant="secondary" className="w-full font-bold">
+                  Sign up
+                </Button>
+              </SignUpButton>
+            </div>
           )}
-          <button type="button" onClick={toggle} className="text-sm font-medium text-muted-foreground text-left flex items-center gap-2">
-            {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-            {theme === "light" ? "Dark Mode" : "Light Mode"}
-          </button>
-          <Button type="button" className="px-6 w-fit" onClick={handleCreateMeeting}>
-            Create Meeting
-          </Button>
         </div>
       )}
     </nav>

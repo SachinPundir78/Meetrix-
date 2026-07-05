@@ -2,10 +2,11 @@ import { db } from '../db/index.js';
 import { GoogleGenAI } from "@google/genai";
 import { meetings, guests, availabilities } from '../db/schema.js';
 import { nanoid } from 'nanoid';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, ne } from 'drizzle-orm';
 import { users } from '../db/schema.js';
 import { sendMeetingConfirmation } from '../utils/email.js';
 import { google } from 'googleapis';
+import { clerkClient, getAuth } from '@clerk/express';
 
 export const createMeeting = async (req, res) => {
   try {
@@ -62,61 +63,104 @@ export const getMeetingForGuest = async (req, res) => {
       const hostResult = await db.select().from(users).where(eq(users.id, meeting.hostId));
       const host = hostResult[0];
 
-      if (host && host.googleRefreshToken) {
-        const oauth2Client = new google.auth.OAuth2(
-          process.env.GOOGLE_CLIENT_ID,
-          process.env.GOOGLE_CLIENT_SECRET,
-          'postmessage'
-        );
-        oauth2Client.setCredentials({ refresh_token: host.googleRefreshToken });
+      if (host && host.clerkId) {
+        const tokenRes = await clerkClient.users.getUserOauthAccessToken(host.clerkId, 'oauth_google');
+        const googleToken = (Array.isArray(tokenRes) ? tokenRes[0] : tokenRes.data?.[0])?.token;
 
-        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+        if (googleToken) {
+          const oauth2Client = new google.auth.OAuth2();
+          oauth2Client.setCredentials({ access_token: googleToken });
 
-        // Widen the search window to handle UTC offset mismatches
-        const firstDate = new Date(meeting.proposedDates[0]);
-        const lastDate = new Date(meeting.proposedDates[meeting.proposedDates.length - 1]);
+          const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-        // Subtract 24 hours to ensure we don't miss morning events due to UTC offsets
-        const timeMin = new Date(firstDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
-        // Add 48 hours to ensure we cover the entire final day across all timezones
-        const timeMax = new Date(lastDate.getTime() + 48 * 60 * 60 * 1000).toISOString();
+          // Widen the search window to handle UTC offset mismatches
+          const firstDate = new Date(meeting.proposedDates[0]);
+          const lastDate = new Date(meeting.proposedDates[meeting.proposedDates.length - 1]);
 
-        const freebusyRes = await calendar.freebusy.query({
-          requestBody: {
-            timeMin,
-            timeMax,
-            items: [{ id: 'primary' }],
-          },
-        });
+          // Subtract 24 hours to ensure we don't miss morning events due to UTC offsets
+          const timeMin = new Date(firstDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
+          // Add 48 hours to ensure we cover the entire final day across all timezones
+          const timeMax = new Date(lastDate.getTime() + 48 * 60 * 60 * 1000).toISOString();
 
-        const busySlots = freebusyRes.data.calendars.primary.busy || [];
-        console.log("🔍 GOOGLE BUSY DATA:", JSON.stringify(busySlots));
-        hostBusyTimes = busySlots.map(slot => ({ start: slot.start, end: slot.end }));
+          const freebusyRes = await calendar.freebusy.query({
+            requestBody: {
+              timeMin,
+              timeMax,
+              items: [{ id: 'primary' }],
+            },
+          });
+
+          const busySlots = freebusyRes.data.calendars.primary.busy || [];
+          console.log("🔍 GOOGLE BUSY DATA:", JSON.stringify(busySlots));
+          hostBusyTimes = busySlots.map(slot => ({ start: slot.start, end: slot.end }));
+        }
       }
     } catch (calendarError) {
       console.error("Calendar sync error (non-fatal):", calendarError.message);
       hostBusyTimes = [];
     }
 
-    // If a guestId is provided, fetch that guest's existing data
-    if (guestId) {
+    // Check for authenticated user via Clerk
+    let currentUser = null;
+    try {
+      const { userId } = getAuth(req);
+      if (userId) {
+        let userResult = await db.select().from(users).where(eq(users.clerkId, userId));
+        currentUser = userResult[0];
+
+        if (!currentUser) {
+          // Lazy create
+          const clerkUser = await clerkClient.users.getUser(userId);
+          const email = clerkUser.emailAddresses[0]?.emailAddress || '';
+          const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User';
+          const picture = clerkUser.imageUrl;
+
+          const newUser = await db.insert(users).values({
+            clerkId: userId,
+            email,
+            name,
+            picture,
+          }).returning();
+          currentUser = newUser[0];
+        }
+      }
+    } catch (authError) {
+      console.error("Optional auth check error:", authError);
+    }
+
+    // Try to find the guest record for this meeting
+    let guest = null;
+    if (currentUser) {
+      // 1. Try to find by authenticated user's email
+      const guestResult = await db.select().from(guests)
+        .where(and(eq(guests.email, currentUser.email), eq(guests.meetingId, meeting.id)));
+      if (guestResult.length > 0) {
+        guest = guestResult[0];
+      }
+    }
+
+    if (!guest && guestId) {
+      // 2. Fall back to guestId query parameter
       const guestResult = await db.select().from(guests)
         .where(and(eq(guests.id, guestId), eq(guests.meetingId, meeting.id)));
       if (guestResult.length > 0) {
-        const guest = guestResult[0];
-        const guestAvailabilities = await db.select().from(availabilities)
-          .where(eq(availabilities.guestId, guest.id));
-        return res.status(200).json({
-          ...meeting,
-          hostBusyTimes,
-          guest: {
-            id: guest.id,
-            name: guest.name,
-            email: guest.email,
-            availabilities: guestAvailabilities
-          }
-        });
+        guest = guestResult[0];
       }
+    }
+
+    if (guest) {
+      const guestAvailabilities = await db.select().from(availabilities)
+        .where(eq(availabilities.guestId, guest.id));
+      return res.status(200).json({
+        ...meeting,
+        hostBusyTimes,
+        guest: {
+          id: guest.id,
+          name: guest.name,
+          email: guest.email,
+          availabilities: guestAvailabilities
+        }
+      });
     }
 
     res.status(200).json({ ...meeting, hostBusyTimes });
@@ -126,11 +170,18 @@ export const getMeetingForGuest = async (req, res) => {
   }
 };
 
-// 2. Save the guest's selected time blocks
 export const submitGuestVote = async (req, res) => {
   try {
     const { guestSlug } = req.params;
-    const { name, email, availabilities: guestTimes, guestId } = req.body;
+    const { availabilities: guestTimes } = req.body;
+
+    if (!req.user || !req.user.email) {
+      return res.status(401).json({ error: "Unauthorized. Please log in." });
+    }
+
+    const name = req.user.name || "Guest";
+    const email = req.user.email;
+
     const meetingResult = await db.select().from(meetings).where(eq(meetings.guestSlug, guestSlug));
     if (meetingResult.length === 0) {
       return res.status(404).json({ error: "Meeting not found." });
@@ -141,18 +192,17 @@ export const submitGuestVote = async (req, res) => {
       return res.status(400).json({ error: "This meeting has already been finalized." });
     }
 
-    let currentGuestId = guestId;
+    // Resolve guest record by authenticated user's email
+    const existingGuest = await db.select().from(guests)
+      .where(and(eq(guests.email, email), eq(guests.meetingId, meeting.id)));
 
-    if (currentGuestId) {
-      // Verify the guest belongs to this meeting
-      const existingGuest = await db.select().from(guests)
-        .where(and(eq(guests.id, currentGuestId), eq(guests.meetingId, meeting.id)));
-      if (existingGuest.length === 0) {
-        return res.status(400).json({ error: "Guest not found for this meeting." });
-      }
-      // Update guest info
+    let currentGuestId;
+
+    if (existingGuest.length > 0) {
+      currentGuestId = existingGuest[0].id;
+      // Update guest info if name changed
       await db.update(guests)
-        .set({ name, email })
+        .set({ name })
         .where(eq(guests.id, currentGuestId));
       // Delete old availabilities
       await db.delete(availabilities)
@@ -255,39 +305,40 @@ export const confirmMeeting = async (req, res) => {
         // Continue without AI notes if genai fails
       }
 
-      if (host?.googleRefreshToken) {
-        const oauth2Client = new google.auth.OAuth2(
-          process.env.GOOGLE_CLIENT_ID,
-          process.env.GOOGLE_CLIENT_SECRET,
-          'postmessage'
-        );
-        oauth2Client.setCredentials({ refresh_token: host.googleRefreshToken });
+      if (host?.clerkId) {
+        const tokenRes = await clerkClient.users.getUserOauthAccessToken(host.clerkId, 'oauth_google');
+        const googleToken = (Array.isArray(tokenRes) ? tokenRes[0] : tokenRes.data?.[0])?.token;
 
-        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+        if (googleToken) {
+          const oauth2Client = new google.auth.OAuth2();
+          oauth2Client.setCredentials({ access_token: googleToken });
 
-        const event = {
-          summary: meetingResult[0].title,
-          description: aiNotes || meetingResult[0].description || 'Scheduled via Meetrix',
-          start: { dateTime: new Date(finalStartTime).toISOString(), timeZone: 'UTC' },
-          end: { dateTime: calculatedEndTime.toISOString(), timeZone: 'UTC' },
-          attendees: meetingGuests.filter(g => g.email).map(g => ({ email: g.email })),
-          conferenceData: {
-            createRequest: {
-              requestId: `meetrix-${meetingId}-${Date.now()}`,
-              conferenceSolutionKey: { type: 'hangoutsMeet' }
+          const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+          const event = {
+            summary: meetingResult[0].title,
+            description: aiNotes || meetingResult[0].description || 'Scheduled via Meetrix',
+            start: { dateTime: new Date(finalStartTime).toISOString(), timeZone: 'UTC' },
+            end: { dateTime: calculatedEndTime.toISOString(), timeZone: 'UTC' },
+            attendees: meetingGuests.filter(g => g.email).map(g => ({ email: g.email })),
+            conferenceData: {
+              createRequest: {
+                requestId: `meetrix-${meetingId}-${Date.now()}`,
+                conferenceSolutionKey: { type: 'hangoutsMeet' }
+              }
             }
-          }
-        };
+          };
 
-        const eventResponse = await calendar.events.insert({
-          calendarId: 'primary',
-          resource: event,
-          conferenceDataVersion: 1,
-          sendUpdates: 'all'
-        });
+          const eventResponse = await calendar.events.insert({
+            calendarId: 'primary',
+            resource: event,
+            conferenceDataVersion: 1,
+            sendUpdates: 'all'
+          });
 
-        // Extract the Meet link (best effort)
-        meetLink = eventResponse.data.hangoutLink || meetLink;
+          // Extract the Meet link (best effort)
+          meetLink = eventResponse.data.hangoutLink || meetLink;
+        }
 
         const conferenceData = eventResponse.data.conferenceData;
         if (!meetLink && conferenceData && conferenceData.entryPoints) {
@@ -306,7 +357,8 @@ export const confirmMeeting = async (req, res) => {
       .set({ 
         status: 'CONFIRMED', 
         finalStartTime: new Date(finalStartTime), 
-        finalEndTime: calculatedEndTime
+        finalEndTime: calculatedEndTime,
+        meetLink: meetLink
       })
       .where(eq(meetings.id, meetingId))
       .returning();
@@ -492,5 +544,50 @@ export const getSmartArbitrator = async (req, res) => {
   } catch (error) {
     console.error("❌ Smart Arbitrator Error:", error);
     res.status(500).json({ error: "Failed to analyze availability", details: error.message });
+  }
+};
+
+// 6. Fetch all meetings the logged-in user is attending as a guest (created by others)
+export const getAttendingMeetings = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const userId = req.user.id;
+
+    if (!userEmail) {
+      return res.status(200).json([]);
+    }
+
+    // Select meetings where the user is a guest, but not the host
+    const attending = await db.select({
+      id: meetings.id,
+      title: meetings.title,
+      description: meetings.description,
+      durationMinutes: meetings.durationMinutes,
+      guestSlug: meetings.guestSlug,
+      proposedDates: meetings.proposedDates,
+      status: meetings.status,
+      finalStartTime: meetings.finalStartTime,
+      finalEndTime: meetings.finalEndTime,
+      meetLink: meetings.meetLink,
+      createdAt: meetings.createdAt,
+      hostName: users.name,
+      hostEmail: users.email,
+      hostPicture: users.picture
+    })
+    .from(meetings)
+    .innerJoin(guests, eq(guests.meetingId, meetings.id))
+    .innerJoin(users, eq(users.id, meetings.hostId))
+    .where(
+      and(
+        eq(guests.email, userEmail),
+        ne(meetings.hostId, userId)
+      )
+    )
+    .orderBy(desc(meetings.createdAt));
+
+    res.status(200).json(attending);
+  } catch (error) {
+    console.error("Error fetching attending meetings:", error);
+    res.status(500).json({ error: "Failed to load attending meetings" });
   }
 };

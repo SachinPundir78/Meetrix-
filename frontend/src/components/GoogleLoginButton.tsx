@@ -1,59 +1,37 @@
-import { useGoogleLogin } from "@react-oauth/google";
-import { useNavigate } from "react-router-dom";
+import { useSignIn } from "@clerk/clerk-react";
 import { toast } from "sonner";
-import { useAuthStore, type AuthUser } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
 
-const API_URL = "https://meetrix.anushreesh.com/api";
-const AUTH_GOOGLE_URL = `${API_URL}/auth/google`;
-
 export function GoogleLoginButton() {
-  const navigate = useNavigate();
-  const login = useAuthStore((s) => s.login);
+  const { signIn, isLoaded } = useSignIn();
 
-  const googleLogin = useGoogleLogin({
-    flow: "auth-code",
-    scope: "https://www.googleapis.com/auth/calendar.events",
-    prompt: "consent",
-    access_type: "offline",
-    include_granted_scopes: false,
-    onSuccess: async (codeResponse) => {
-      try {
-        const res = await fetch(AUTH_GOOGLE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: codeResponse.code }),
-        });
-        if (!res.ok) {
-          const msg = await res
-            .json()
-            .then((d: { error?: string }) => d.error)
-            .catch(() => "");
-          throw new Error(msg || "Authentication failed");
-        }
-        const data = (await res.json()) as {
-          token: string;
-          user: Record<string, unknown>;
-        };
-        login(data.token, data.user as AuthUser);
-        navigate("/dashboard");
-      } catch (e) {
-        toast.error(
-          e instanceof Error ? e.message : "Authentication failed"
-        );
-      }
-    },
-    onError: () => {
-      toast.error("Google sign-in was cancelled or failed");
-    },
-  });
+  const handleLogin = async () => {
+    if (!isLoaded) return;
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/dashboard",
+        additionalOAuthScopes: {
+          google: [
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/calendar.events"
+          ]
+        },
+      });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Authentication failed"
+      );
+    }
+  };
 
   return (
     <Button
       variant="secondary"
       size="lg"
       className="w-full gap-2"
-      onClick={() => googleLogin()}
+      onClick={handleLogin}
     >
       <svg className="h-5 w-5" viewBox="0 0 24 24">
         <path

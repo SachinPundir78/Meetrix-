@@ -1,15 +1,16 @@
-import { Home, LayoutGrid, Plus, Sun, Moon, LogOut } from "lucide-react";
+import { Home, LayoutGrid, Plus, Sun, Moon, LogOut, CalendarDays } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useClerk } from "@clerk/clerk-react";
 import { cn } from "@/lib/utils";
 
 const BottomNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggle } = useTheme();
+  const { signOut } = useClerk();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const logout = useAuthStore((s) => s.logout);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -70,6 +71,22 @@ const BottomNavbar = () => {
           <Plus className="h-6 w-6" strokeWidth={2.5} />
         </button>
 
+        {/* My Meetings */}
+        {isAuthenticated && (
+          <Link
+            to="/my-meetings"
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 p-1.5 rounded-lg transition-colors",
+              isActive("/my-meetings")
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <CalendarDays className="h-5 w-5" />
+            <span className="text-[10px] font-medium">My Meetings</span>
+          </Link>
+        )}
+
         {/* Theme toggle */}
         <button
           type="button"
@@ -89,7 +106,7 @@ const BottomNavbar = () => {
         {isAuthenticated ? (
           <button
             type="button"
-            onClick={() => logout()}
+            onClick={() => signOut()}
             className="flex flex-col items-center justify-center gap-0.5 p-1.5 rounded-lg transition-colors text-muted-foreground hover:text-foreground"
             aria-label="Sign out"
           >

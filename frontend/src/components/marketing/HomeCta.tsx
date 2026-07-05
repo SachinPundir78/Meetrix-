@@ -25,7 +25,7 @@ const HomeCta = ({ onCreateMeeting }: HomeCtaProps) => {
             className="px-6 sm:px-10 py-5 sm:py-7 text-sm sm:text-lg shadow-xl"
             onClick={onCreateMeeting}
           >
-            Create Your First Group Meeting for Free
+            Create Your Group Meeting for Free
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>

@@ -1,11 +1,11 @@
-import { getStoredAuthToken } from "@/store/useAuthStore";
+import { getAuthToken } from "@/store/useAuthStore";
 
-const API_URL = "https://meetrix.anushreesh.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "https://meetrix/api";
 const API_BASE_URL = API_URL;
 
 //Get token, attach Authorization header, add Content-Type
-function jsonHeadersWithAuth(): HeadersInit {
-  const token = getStoredAuthToken();
+async function jsonHeadersWithAuth(): Promise<HeadersInit> {
+  const token = await getAuthToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -15,8 +15,8 @@ function jsonHeadersWithAuth(): HeadersInit {
   return headers;
 }
 
-function getHeadersWithAuth(): HeadersInit {
-  const token = getStoredAuthToken();
+async function getHeadersWithAuth(): Promise<HeadersInit> {
+  const token = await getAuthToken();
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
@@ -47,7 +47,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 export const fetchAiSuggestions = async (meetingId: string) => {
-  const token = getStoredAuthToken();
+  const token = await getAuthToken();
   const response = await fetch(`${API_BASE_URL}/meetings/${meetingId}/smart-arbitrator`, {
     headers: {
       "Authorization": `Bearer ${token}`,
@@ -72,7 +72,7 @@ export async function createMeeting(data: CreateMeetingBody): Promise<CreateMeet
   return parseJson(
     await fetch(`${API_BASE_URL}/meetings`, {
       method: "POST",
-      headers: jsonHeadersWithAuth(),
+      headers: await jsonHeadersWithAuth(),
       body: JSON.stringify(data),
     })
   );
@@ -87,6 +87,9 @@ export interface MeetingForGuest {
   proposedDates: string[];
   guestSlug: string;
   status: string;
+  finalStartTime?: string | null;
+  finalEndTime?: string | null;
+  meetLink?: string | null;
   hostBusyTimes?: { start: string; end: string }[];
   guest?: {
     id: string;
@@ -102,12 +105,14 @@ export async function getMeeting(guestSlug: string, guestId?: string): Promise<M
     url.searchParams.set('guestId', guestId);
   }
   return parseJson(
-    await fetch(url.toString())
+    await fetch(url.toString(), {
+      headers: await getHeadersWithAuth(),
+    })
   );
 }
 
 export interface SubmitVoteBody {
-  name: string;
+  name?: string;
   email?: string;
   guestId?: string;
   availabilities: { startTime: string; endTime: string }[];
@@ -124,7 +129,7 @@ export async function submitVote(guestSlug: string, data: SubmitVoteBody): Promi
       `${API_BASE_URL}/meetings/guest/${encodeURIComponent(guestSlug)}/vote`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await jsonHeadersWithAuth(),
         body: JSON.stringify(data),
       }
     )
@@ -158,7 +163,7 @@ export interface DashboardData {
 export async function getDashboardData(adminSlug: string): Promise<DashboardData> {
   return parseJson(
     await fetch(`${API_BASE_URL}/meetings/admin/${encodeURIComponent(adminSlug)}`, {
-      headers: getHeadersWithAuth(),
+      headers: await getHeadersWithAuth(),
     })
   );
 }
@@ -174,7 +179,7 @@ export async function confirmMeeting(adminSlug: string, data: ConfirmMeetingBody
       `${API_BASE_URL}/meetings/admin/${encodeURIComponent(adminSlug)}/confirm`,
       {
         method: "POST",
-        headers: jsonHeadersWithAuth(),
+        headers: await jsonHeadersWithAuth(),
         body: JSON.stringify(data),
       }
     )
@@ -192,13 +197,25 @@ export interface MyMeeting {
   status: string;
   finalStartTime: string | null;
   finalEndTime: string | null;
+  meetLink?: string | null;
   createdAt: string;
+  hostName?: string;
+  hostEmail?: string;
+  hostPicture?: string | null;
 }
 
 export async function getMyMeetings(): Promise<MyMeeting[]> {
   return parseJson(
     await fetch(`${API_BASE_URL}/meetings/mine`, {
-      headers: getHeadersWithAuth(),
+      headers: await getHeadersWithAuth(),
+    })
+  );
+}
+
+export async function getAttendingMeetings(): Promise<MyMeeting[]> {
+  return parseJson(
+    await fetch(`${API_BASE_URL}/meetings/attending`, {
+      headers: await getHeadersWithAuth(),
     })
   );
 }
