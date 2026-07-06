@@ -1,7 +1,7 @@
 # <img src="frontend/public/pwa-512x512.png" width="48" alt="Meetrix Icon" align="center"> 𝓜𝓮𝓮𝓽𝓻𝓲𝔁 𝓖𝓻𝓸𝓾𝓹𝓼
 
-> 📖 **English Quote:**
-> *"Time isn't a commodity, it's a canvas. When we align our moments, we paint our success together."* 🎨✨
+> 📖 **𝓔𝓷𝓰𝓵𝓲𝓼𝓱 𝓠𝓾𝓸𝓽𝓮:**
+> *"𝓣𝓲𝓶𝓮 𝓲𝓼𝓷'𝓽 𝓪 𝓬𝓸𝓶𝓶𝓸𝓭𝓲𝓽𝔂, 𝓲𝓽'𝓼 𝓪 𝓬𝓪𝓷𝓿𝓪𝓼. 𝓦𝓱𝓮𝓷 𝔀𝓮 𝓪𝓵𝓲𝓰𝓷 𝓸𝓾𝓻 𝓶𝓸𝓶𝓮𝓷𝓽𝓼, 𝔀𝓮 𝓹𝓪𝓲𝓷𝓽 𝓸𝓾𝓻 𝓼𝓾𝓬𝓬𝓮𝓼𝓼 𝓽𝓸𝓰𝓮𝓽𝓱𝓮𝓻."* 🎨✨
 
 Where effortless collaboration meets elegant scheduling.
 
@@ -9,7 +9,7 @@ Meetrix Groups is a refined full-stack platform designed to help hosts propose m
 
 ---
 
-## ✨ Why it feels different
+## ✨ 𝓦𝓱𝔂 𝓲𝓽 𝓯𝓮𝓮𝓵𝓼 𝓭𝓲𝓯𝓯𝓮𝓻𝓮𝓷𝓽
 
 - A graceful, modern experience for hosts and guests
 - Fast and intuitive meeting creation flow
@@ -19,7 +19,7 @@ Meetrix Groups is a refined full-stack platform designed to help hosts propose m
 
 ---
 
-## 🌟 Core Features
+## 🌟 𝓒𝓸𝓻𝓮 𝓕𝓮𝓪𝓽𝓾𝓻𝓮𝓼:
 
 - Secure Google authentication for effortless sign-in
 - Create meetings with multiple proposed time slots
@@ -30,7 +30,7 @@ Meetrix Groups is a refined full-stack platform designed to help hosts propose m
 
 ---
 
-## 🖼️ Visual Showcase
+## 🖼️ 𝓥𝓲𝓼𝓾𝓪𝓵 𝓢𝓱𝓸𝔀𝓬𝓪𝓼𝓮
 
 ![P1](frontend/public/P1.png)
 
@@ -46,7 +46,7 @@ Meetrix Groups is a refined full-stack platform designed to help hosts propose m
 
 ---
 
-## 🏗️ Project Structure
+## 🏗️ 𝓟𝓻𝓸𝓳𝓮𝓬𝓽 𝓢𝓽𝓻𝓾𝓬𝓽𝓾𝓻𝓮
 
 ```text
 meetrix/
@@ -57,17 +57,17 @@ meetrix/
 
 ---
 
-## ⚙️ Tech Stack
+## ⚙️ 𝓣𝓮𝓬𝓱 𝓢𝓽𝓪𝓬𝓴
 
-### Backend
+### 𝓑𝓪𝓬𝓴𝓮𝓷𝓭
 - Node.js + Express
 - PostgreSQL + Drizzle ORM
-- Google OAuth authentication
+- Clerk OAuth authentication
 - Nodemailer for email delivery
 - JWT-based session handling
 - Zod for schema validation
 
-### Frontend
+### 𝓕𝓻𝓸𝓷𝓽𝓮𝓷𝓭
 - React + TypeScript
 - Vite for blazing-fast development
 - Tailwind CSS for styling
@@ -76,15 +76,15 @@ meetrix/
 
 ---
 
-## 🚀 Getting Started
+## 🚀 𝓖𝓮𝓽𝓽𝓲𝓷𝓰 𝓢𝓽𝓪𝓻𝓽𝓮𝓭
 
-### Prerequisites
+### 𝓟𝓻𝓮𝓻𝓮𝓺𝓾𝓲𝓼𝓲𝓽𝓮𝓼
 - Node.js 18+
 - PostgreSQL
 - Clerk OAuth credentials
 - SMTP credentials for email sending
 
-### Backend Setup
+### 𝓑𝓪𝓬𝓴𝓮𝓷𝓭 𝓢𝓮𝓽𝓾𝓹
 
 1. Navigate to the backend folder:
 ```bash
@@ -136,7 +136,7 @@ npm run dev
 
 The API will be available at `http://localhost:3000`.
 
-### Frontend Setup
+### 𝓕𝓻𝓸𝓷𝓽𝓮𝓷𝓭 𝓢𝓮𝓽𝓾𝓹
 
 1. Navigate to the frontend folder:
 ```bash
@@ -165,7 +165,7 @@ The app will be available at `http://localhost:5173`.
 
 ---
 
-## 🔐 Key API Routes
+## 🔐 𝓚𝓮𝔂 𝓐𝓟𝓘 𝓡𝓸𝓾𝓽𝓮𝓼
 
 - `POST /auth/google` - Sign in with Google
 - `POST /meetings` - Create a meeting
@@ -177,16 +177,16 @@ The app will be available at `http://localhost:5173`.
 
 ---
 
-## 🧪 Available Scripts
+## 🧪 𝓐𝓿𝓪𝓲𝓵𝓪𝓫𝓵𝓮 𝓢𝓬𝓻𝓲𝓹𝓽𝓼
 
-### Backend
+### 𝓑𝓪𝓬𝓴𝓮𝓷𝓭
 ```bash
 npm run dev
 npm start
 npm run db:push
 ```
 
-### Frontend
+### 𝓕𝓻𝓸𝓷𝓽𝓮𝓷𝓭
 ```bash
 npm run dev
 npm run build
@@ -198,7 +198,7 @@ npm run test:watch
 
 ---
 
-## 🖋️ Closing Note
+## 🖋️ 𝓒𝓵𝓸𝓼𝓲𝓷𝓰 𝓝𝓸𝓽𝓮
 
 Designed to make coordination feel simple, elegant, and beautifully organized.
 
@@ -208,10 +208,10 @@ Designed to make coordination feel simple, elegant, and beautifully organized.
 
 ISC
 
-## 👥 Contributing
+## 👥 𝓒𝓸𝓷𝓽𝓻𝓲𝓫𝓾𝓽𝓲𝓷𝓰
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 💡 Support
+## 💡 𝓢𝓾𝓹𝓹𝓸𝓻𝓽
 
 For issues and questions, please create an issue in the repository.
