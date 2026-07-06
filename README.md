@@ -1,4 +1,7 @@
-# 𝓜𝓮𝓮𝓽𝓻𝓲𝔁 𝓖𝓻𝓸𝓾𝓹𝓼
+# <img src="frontend/public/pwa-512x512.png" width="48" alt="Meetrix Icon" align="center"> 𝓜𝓮𝓮𝓽𝓻𝓲𝔁 𝓖𝓻𝓸𝓾𝓹𝓼
+
+> 📖 **English Quote:**
+> *"Time isn't a commodity, it's a canvas. When we align our moments, we paint our success together."* 🎨✨
 
 Where effortless collaboration meets elegant scheduling.
 
